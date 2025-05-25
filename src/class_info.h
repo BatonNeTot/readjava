@@ -2,6 +2,7 @@
 #define header_h
 
 #include "cp_info.h"
+#include "field_info.h"
 #include "method_info.h"
 
 typedef struct class_info {
@@ -19,8 +20,8 @@ typedef struct class_info {
     uint16_t attributesCount;   
     
     cp_tag** ppConstantPool;
-    // TODO interfaces
-    // TODO fields
+    uint16_t* pInterfaces;
+    field_info* pFields;
     method_info* pMethods;
     attr_info** attributes;
 } class_info;

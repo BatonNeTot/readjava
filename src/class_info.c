@@ -36,8 +36,16 @@ void read_class(class_info* pClassInfo, const char* pFilename) {
 
 
     readU16(pClassInfo->interfacesCount);
+    pClassInfo->pInterfaces = malloc(sizeof(*pClassInfo->pInterfaces) * (pClassInfo->interfacesCount));
+    for (uint16_t i = 0; i < pClassInfo->interfacesCount; ++i) {
+        readU16(pClassInfo->pInterfaces[i]);
+    } 
     
     readU16(pClassInfo->fieldsCount);
+    pClassInfo->pFields = malloc(sizeof(*pClassInfo->pFields) * (pClassInfo->fieldsCount));
+    for (uint16_t i = 0; i < pClassInfo->fieldsCount; ++i) {
+        read_field(pClassInfo->pFields + i, pClassFile);
+    } 
 
     readU16(pClassInfo->methodsCount);
     pClassInfo->pMethods = malloc(sizeof(*pClassInfo->pMethods) * (pClassInfo->methodsCount));

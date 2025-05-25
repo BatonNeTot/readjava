@@ -1,0 +1,18 @@
+#ifndef field_info_h
+#define field_info_h
+
+#include "attr_info.h"
+
+#include "common.h"
+
+typedef struct field_info {
+    access_flags accessFlags;
+    uint16_t nameIndex;
+    uint16_t descriptorIndex;
+    uint16_t attributesCount;
+    attr_info** attributes;
+} field_info;
+
+void read_field(field_info* pFieldInfo, FILE* pClassFile);
+
+#endif

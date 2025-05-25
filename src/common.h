@@ -60,6 +60,8 @@ enum __ACCESS_FLAGS {
     ACC_FINAL           = 	0x0010,
     ACC_SYNCHRONIZED    = 	0x0020,
     ACC_SUPER           = 	0x0020,
+    ACC_VOLATILE        = 	0x0040,
+    ACC_TRANSIENT       = 	0x0080,
     ACC_NATIVE          = 	0x0100,
     ACC_INTERFACE       = 	0x0200,
     ACC_ABSTRACT        = 	0x0400,
