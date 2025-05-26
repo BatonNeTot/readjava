@@ -28,7 +28,7 @@
 
 
 
-#define readBlock(buffer, size)\
+#define read_block(buffer, size)\
 do {\
     size_t readCount = fread(buffer, 1, size, pClassFile);\
     if (readCount != size) {\
@@ -37,17 +37,17 @@ do {\
     }\
 } while(0)
 
-#define readAndSwap(var, size)\
+#define read_swap_endian(var, size)\
 do {\
     _Static_assert(sizeof(var) == size / 8, "");\
     uint##size##_t readValue;\
-    readBlock(&readValue, sizeof(readValue));\
+    read_block(&readValue, sizeof(readValue));\
     (var) = beToCPU(readValue, size);\
 } while(0)
-#define readU8(var) readAndSwap(var, 8)
-#define readU16(var) readAndSwap(var, 16)
-#define readU32(var) readAndSwap(var, 32)
-#define readU64(var) readAndSwap(var, 64)
+#define read_u8(var) read_swap_endian(var, 8)
+#define read_u16(var) read_swap_endian(var, 16)
+#define read_u32(var) read_swap_endian(var, 32)
+#define read_u64(var) read_swap_endian(var, 64)
 
 
 typedef uint16_t access_flags;
@@ -68,9 +68,11 @@ enum __ACCESS_FLAGS {
     ACC_STRICT          = 	0x0800,
 };
 
-#define print_access(accessFlags, formatPrefix, accessName, formatPostfix, ...)\
-if ((accessFlags) & ACC_##accessName) printf(formatPrefix #accessName formatPostfix)
-#define printf_access(accessFlags, formatPrefix, accessName, formatPostfix, ...)\
-if ((accessFlags) & ACC_##accessName) printf(formatPrefix #accessName formatPostfix, __VA_ARGS__)
+#define fprint_access(file, accessFlags, formatPrefix, accessName, formatPostfix, ...)\
+if ((accessFlags) & ACC_##accessName) fprintf(file, formatPrefix #accessName formatPostfix)
+#define fprintf_access(file, accessFlags, formatPrefix, accessName, formatPostfix, ...)\
+if ((accessFlags) & ACC_##accessName) fprintf(file, formatPrefix #accessName formatPostfix, __VA_ARGS__)
+
+#define PADDING "  "
 
 #endif

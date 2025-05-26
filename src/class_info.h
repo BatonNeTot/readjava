@@ -10,8 +10,8 @@ typedef struct class_info {
     uint16_t majorVersion;
     
     access_flags accessFlags;
-    uint16_t thisClass;
-    uint16_t superClass;
+    uint16_t thisClassIndex;
+    uint16_t superClassIndex;
     
     uint16_t constantPoolCount;
     uint16_t interfacesCount;
@@ -19,7 +19,7 @@ typedef struct class_info {
     uint16_t methodsCount;
     uint16_t attributesCount;   
     
-    cp_tag** ppConstantPool;
+    cp_info** ppConstantPool;
     uint16_t* pInterfaces;
     field_info* pFields;
     method_info* pMethods;

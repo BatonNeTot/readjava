@@ -13,6 +13,6 @@ typedef struct method_info {
     attr_info** attributes;
 } method_info;
 
-void read_method(method_info* pMethodInfo, FILE* pClassFile);
+void read_method(method_info* pMethodInfo, cp_info** ppConstantPool, FILE* pClassFile);
 
 #endif

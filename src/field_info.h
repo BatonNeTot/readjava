@@ -13,6 +13,6 @@ typedef struct field_info {
     attr_info** attributes;
 } field_info;
 
-void read_field(field_info* pFieldInfo, FILE* pClassFile);
+void read_field(field_info* pFieldInfo, cp_info** ppConstantPool, FILE* pClassFile);
 
 #endif

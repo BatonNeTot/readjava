@@ -6,91 +6,97 @@
 typedef uint8_t cp_tag;
 
 enum __CP_TAG {
-    CONSTANT_Class = 7,
-    CONSTANT_Fieldref = 9,
-    CONSTANT_Methodref = 10,
-    CONSTANT_InterfaceMethodref = 11,
-    CONSTANT_String = 8,
-    CONSTANT_Integer = 3,
-    CONSTANT_Float = 4,
-    CONSTANT_Long = 5,
-    CONSTANT_Double = 6,
-    CONSTANT_NameAndType = 12,
-    CONSTANT_Utf8 = 1
+    CP_CLASS = 7,
+    CP_FIELDREF = 9,
+    CP_METHODREF = 10,
+    CP_IMETHODREF = 11,
+    CP_STRING = 8,
+    CP_INTEGER = 3,
+    CP_FLOAT = 4,
+    CP_LONG = 5,
+    CP_DOUBLE = 6,
+    CP_NAME_AND_TYPE = 12,
+    CP_UTF8 = 1
 };
 
-typedef struct CONSTANT_Class_info {
+typedef cp_tag cp_info;
+
+typedef struct cp_class_info {
     cp_tag tag;
     uint16_t nameIndex;
-} CONSTANT_Class_info;
+} cp_class_info;
 
-typedef struct CONSTANT_Fieldref_info {
+typedef struct cp_fieldref_info {
     cp_tag tag;
     uint16_t classIndex;
     uint16_t nameAndTypeIndex;
-} CONSTANT_Fieldref_info;
+} cp_fieldref_info;
 
-typedef struct CONSTANT_Methodref_info {
+typedef struct cp_methodref_info {
     cp_tag tag;
     uint16_t classIndex;
     uint16_t nameAndTypeIndex;
-} CONSTANT_Methodref_info;
+} cp_methodref_info;
 
-typedef struct CONSTANT_InterfaceMethodref_info {
+typedef struct cp_imethodref_info {
     cp_tag tag;
     uint16_t classIndex;
     uint16_t nameAndTypeIndex;
-} CONSTANT_InterfaceMethodref_info;
+} cp_imethodref_info;
 
-typedef struct CONSTANT_String_info {
+typedef struct cp_string_info {
     cp_tag tag;
     uint16_t stringIndex;
-} CONSTANT_String_info;
+} cp_string_info;
 
-typedef struct CONSTANT_Integer_info {
+typedef struct cp_integer_info {
     cp_tag tag;
     union {
     int32_t value;
     uint32_t bytes;
     };
-} CONSTANT_Integer_info;
+} cp_integer_info;
 
-typedef struct CONSTANT_Float_info {
+typedef struct cp_float_info {
     cp_tag tag;
     union {
     float value;
     uint32_t bytes;
     };
-} CONSTANT_Float_info;
+} cp_float_info;
 
-typedef struct CONSTANT_Long_info {
+typedef struct cp_long_info {
     cp_tag tag;
     union {
     int64_t value;
     uint64_t bytes;
     };
-} CONSTANT_Long_info;
+} cp_long_info;
 
-typedef struct CONSTANT_Double_info {
+typedef struct cp_double_info {
     cp_tag tag;
     union {
     double value;
     uint64_t bytes;
     };
-} CONSTANT_Double_info;
+} cp_double_info;
 
-typedef struct CONSTANT_NameAndType_info {
+typedef struct cp_name_and_type_info {
     cp_tag tag;
     uint16_t nameIndex;
     uint16_t descriptorIndex;
-} CONSTANT_NameAndType_info;
+} cp_name_and_type_info;
 
-typedef struct CONSTANT_Utf8_info {
+typedef struct cp_utf8_info {
     cp_tag tag;
     uint16_t length;
     uint8_t bytes[0];
-} CONSTANT_Utf8_info;
+} cp_utf8_info;
 
-cp_tag* read_constant(FILE* pClassFile);
+cp_info* read_constant(FILE* pClassFile);
+
+#define get_constant(ppConstantPool, constantIndex) ((ppConstantPool)[(constantIndex) - 1]);
+
+void fprint_constant(uint16_t constantIndex, cp_info** ppConstantPool, FILE* pFile);
 
 #endif
