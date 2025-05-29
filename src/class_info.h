@@ -26,6 +26,8 @@ typedef struct class_info {
     attr_info** attributes;
 } class_info;
 
-void read_class(class_info* pClassInfo, const char* pFilename);
+bool read_class(class_info* pClassInfo, const char* pFilename);
+
+void fprint_class(class_info* pClassInfo, FILE* pStream);
 
 #endif

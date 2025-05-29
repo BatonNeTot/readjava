@@ -15,4 +15,6 @@ typedef struct field_info {
 
 void read_field(field_info* pFieldInfo, cp_info** ppConstantPool, FILE* pClassFile);
 
+void fprint_field(field_info* pFieldInfo, cp_info** ppConstantPool, FILE* pStream);
+
 #endif

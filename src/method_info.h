@@ -15,4 +15,6 @@ typedef struct method_info {
 
 void read_method(method_info* pMethodInfo, cp_info** ppConstantPool, FILE* pClassFile);
 
+void fprint_method(method_info* pMethodInfo, cp_info** ppConstantPool, FILE* pStream);
+
 #endif

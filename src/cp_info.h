@@ -97,6 +97,8 @@ cp_info* read_constant(FILE* pClassFile);
 
 #define get_constant(ppConstantPool, constantIndex) ((ppConstantPool)[(constantIndex) - 1]);
 
-void fprint_constant(uint16_t constantIndex, cp_info** ppConstantPool, FILE* pFile);
+void fprint_constant_short(uint16_t constantIndex, cp_info** ppConstantPool, FILE* pStream);
+
+void fprint_pool(uint16_t constantPoolCount, cp_info** ppConstantPool, FILE* pStream);
 
 #endif

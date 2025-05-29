@@ -86,7 +86,7 @@ cp_tag* read_constant(FILE* pClassFile) {
     }
 }
 
-void fprint_constant(uint16_t constantIndex, cp_info** ppConstantPool, FILE* pFile) {
+void fprint_constant_short(uint16_t constantIndex, cp_info** ppConstantPool, FILE* pStream) {
     if (constantIndex == 0) {
         // TODO special case
         return;
@@ -97,7 +97,7 @@ void fprint_constant(uint16_t constantIndex, cp_info** ppConstantPool, FILE* pFi
     case CP_CLASS: {
         cp_class_info* pCpInfo = (cp_class_info*)pBaseCpInfo;
 
-        fprint_constant(pCpInfo->nameIndex, ppConstantPool, pFile);
+        fprint_constant_short(pCpInfo->nameIndex, ppConstantPool, pStream);
         break;
     }
     case CP_FIELDREF: {
@@ -112,9 +112,9 @@ void fprint_constant(uint16_t constantIndex, cp_info** ppConstantPool, FILE* pFi
     case CP_STRING: {
         cp_string_info* pCpInfo = (cp_string_info*)pBaseCpInfo;
 
-        fprintf(pFile, "\"");
-        fprint_constant(pCpInfo->stringIndex, ppConstantPool, pFile);
-        fprintf(pFile, "\"");
+        fprintf(pStream, "\"");
+        fprint_constant_short(pCpInfo->stringIndex, ppConstantPool, pStream);
+        fprintf(pStream, "\"");
         break;
     }
     case CP_INTEGER: {
@@ -135,8 +135,130 @@ void fprint_constant(uint16_t constantIndex, cp_info** ppConstantPool, FILE* pFi
     case CP_UTF8: {
         cp_utf8_info* pCpInfo = (cp_utf8_info*)pBaseCpInfo;
 
-        fprintf(pFile, "%.*s", pCpInfo->length, pCpInfo->bytes);
+        fprintf(pStream, "%.*s", pCpInfo->length, pCpInfo->bytes);
         break;
     }
     }
+}
+
+static void fprint_constant(uint16_t constantIndex, cp_info** ppConstantPool, FILE* pStream) {
+    if (constantIndex == 0) {
+        // TODO special case
+        return;
+    }
+
+    cp_info* pBaseCpInfo = get_constant(ppConstantPool, constantIndex);
+    switch (*pBaseCpInfo) {
+    case CP_CLASS: {
+        cp_class_info* pCpInfo = (cp_class_info*)pBaseCpInfo;
+
+        fprintf(pStream, PD"Class:\n");
+        fprintf(pStream, PD PD"Name      "PD);
+        fprint_constant_short(pCpInfo->nameIndex, ppConstantPool, pStream);
+        fprintf(pStream, "\n");
+        break;
+    }
+    case CP_FIELDREF: {
+        cp_fieldref_info* pCpInfo = (cp_fieldref_info*)pBaseCpInfo;
+
+        fprintf(pStream, PD"Fieldref:\n");
+        fprintf(pStream, PD PD"Class     "PD);
+        fprint_constant_short(pCpInfo->classIndex, ppConstantPool, pStream);
+        cp_name_and_type_info* pCpNameAndType = (cp_name_and_type_info*)get_constant(ppConstantPool, pCpInfo->nameAndTypeIndex);
+        fprintf(pStream, "\n"PD PD"Name      "PD);
+        fprint_constant_short(pCpNameAndType->nameIndex, ppConstantPool, pStream);
+        fprintf(pStream, "\n"PD PD"Descriptor"PD);
+        fprint_constant_short(pCpNameAndType->descriptorIndex, ppConstantPool, pStream);
+        fprintf(pStream, "\n");
+        break;
+    }
+    case CP_METHODREF: {
+        cp_methodref_info* pCpInfo = (cp_methodref_info*)pBaseCpInfo;
+
+        fprintf(pStream, PD"Methodref:\n");
+        fprintf(pStream, PD PD"Class     "PD);
+        fprint_constant_short(pCpInfo->classIndex, ppConstantPool, pStream);
+        cp_name_and_type_info* pCpNameAndType = (cp_name_and_type_info*)get_constant(ppConstantPool, pCpInfo->nameAndTypeIndex);
+        fprintf(pStream, "\n"PD PD"Name      "PD);
+        fprint_constant_short(pCpNameAndType->nameIndex, ppConstantPool, pStream);
+        fprintf(pStream, "\n"PD PD"Descriptor"PD);
+        fprint_constant_short(pCpNameAndType->descriptorIndex, ppConstantPool, pStream);
+        fprintf(pStream, "\n");
+        break;
+    }
+    case CP_IMETHODREF: {
+        cp_imethodref_info* pCpInfo = (cp_imethodref_info*)pBaseCpInfo;
+
+        fprintf(pStream, PD"InterfaceMethodref:\n");
+        fprintf(pStream, PD PD"Class     "PD);
+        fprint_constant_short(pCpInfo->classIndex, ppConstantPool, pStream);
+        cp_name_and_type_info* pCpNameAndType = (cp_name_and_type_info*)get_constant(ppConstantPool, pCpInfo->nameAndTypeIndex);
+        fprintf(pStream, "\n"PD PD"Name      "PD);
+        fprint_constant_short(pCpNameAndType->nameIndex, ppConstantPool, pStream);
+        fprintf(pStream, "\n"PD PD"Descriptor"PD);
+        fprint_constant_short(pCpNameAndType->descriptorIndex, ppConstantPool, pStream);
+        fprintf(pStream, "\n");
+        break;
+    }
+    case CP_STRING: {
+        cp_string_info* pCpInfo = (cp_string_info*)pBaseCpInfo;
+
+        fprintf(pStream, PD"String:\n"PD PD);
+        fprint_constant_short(pCpInfo->stringIndex, ppConstantPool, pStream);
+        fprintf(pStream, "\n");
+        break;
+    }
+    case CP_INTEGER: {
+        cp_integer_info* pCpInfo = (cp_integer_info*)pBaseCpInfo;
+
+        fprintf(pStream, PD"Integer:\n"PD PD"%"PRId32"\n", pCpInfo->value);
+        break;
+    }
+    case CP_FLOAT: {
+        cp_float_info* pCpInfo = (cp_float_info*)pBaseCpInfo;
+
+        fprintf(pStream, PD"Float:\n"PD PD"%f\n", pCpInfo->value);
+        break;
+    }
+    case CP_LONG: {
+        cp_long_info* pCpInfo = (cp_long_info*)pBaseCpInfo;
+
+        fprintf(pStream, PD"Long:\n"PD PD"%"PRId64"\n", pCpInfo->value);
+        break;
+    }
+    case CP_DOUBLE: {
+        cp_double_info* pCpInfo = (cp_double_info*)pBaseCpInfo;
+
+        fprintf(pStream, PD"Double:\n"PD PD"%f\n", pCpInfo->value);
+        break;
+    }
+    case CP_NAME_AND_TYPE: {
+        cp_name_and_type_info* pCpInfo = (cp_name_and_type_info*)pBaseCpInfo;
+
+        fprintf(pStream, PD"NameAndType:\n");
+        fprintf(pStream, PD PD"Name      "PD);
+        fprint_constant_short(pCpInfo->nameIndex, ppConstantPool, pStream);
+        fprintf(pStream, "\n"PD PD"Descriptor"PD);
+        fprint_constant_short(pCpInfo->descriptorIndex, ppConstantPool, pStream);
+        fprintf(pStream, "\n");
+        break;
+    }
+    case CP_UTF8: {
+        cp_utf8_info* pCpInfo = (cp_utf8_info*)pBaseCpInfo;
+
+        fprintf(pStream, PD"Utf8:\n"PD PD);
+        fprintf(pStream, "%.*s", pCpInfo->length, pCpInfo->bytes);
+        fprintf(pStream, "\n");
+        break;
+    }
+    }
+}
+
+
+void fprint_pool(uint16_t constantPoolCount, cp_info** ppConstantPool, FILE* pStream) {
+    fprintf(pStream, "Constant pool:\n");
+
+    for (uint16_t i = 1; i < constantPoolCount - 1; ++i) {
+        fprint_constant(i, ppConstantPool, pStream);
+    } 
 }

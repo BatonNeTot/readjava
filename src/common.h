@@ -74,5 +74,6 @@ if ((accessFlags) & ACC_##accessName) fprintf(file, formatPrefix #accessName for
 if ((accessFlags) & ACC_##accessName) fprintf(file, formatPrefix #accessName formatPostfix, __VA_ARGS__)
 
 #define PADDING "  "
+#define PD PADDING
 
 #endif
