@@ -93,7 +93,7 @@ typedef struct cp_utf8_info {
     uint8_t bytes[0];
 } cp_utf8_info;
 
-cp_info* read_constant(FILE* pClassFile);
+cp_info* read_constant(FILE* pClassFile, const char* pFilename);
 
 #define get_constant(ppConstantPool, constantIndex) ((ppConstantPool)[(constantIndex) - 1]);
 

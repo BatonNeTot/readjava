@@ -49,7 +49,9 @@ typedef struct attr_source_file {
     uint16_t sourceFileIndex;
 } attr_source_file;
 
-attr_info* read_attr(cp_info** ppConstantPool, FILE* pClassFile);
+attr_info* read_attr(cp_info** ppConstantPool, FILE* pClassFile, const char* pFilename);
+
+void free_attr(attr_info* pAttrInfo);
 
 void fprint_attr(attr_info* pAttrInfo, cp_info** ppConstantPool, FILE* pStream);
 

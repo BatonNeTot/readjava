@@ -9,25 +9,41 @@ const uint8_t aJavaMagic[4] = { 0xCA, 0xFE, 0xBA, 0xBE };
 bool read_class(class_info* pClassInfo, const char* pFilename) {
     FILE* pClassFile = fopen(pFilename, "rb");
     if (pClassFile == NULL) {
-        fprintf(stderr, "Found no file named \"%s\".\n", pFilename);
-        exit(-1);
+        fprintf(stderr, "readjava: Error: '%s': No such file\n", pFilename);
+        return false;
     }
 
     uint8_t buffer[sizeof(aJavaMagic)];
     size_t magicReadCount = fread(buffer, 1, javaMagicLength, pClassFile);
     if (magicReadCount != javaMagicLength || memcmp(buffer, aJavaMagic, javaMagicLength)) {
-        fprintf(stderr, "File %s is not supported java class.\n", pFilename);
-        exit(-1);
+        fprintf(stderr, "readjava: Error: '%s': Not a java class - it has the wrong magic bytes at the start\n", pFilename);
+        return false;
     }
 
+#undef EOF_ACTION
+#define EOF_ACTION() \
+do {\
+    fclose(pClassFile);\
+    deinit_class(pClassInfo);\
+    return false;\
+} while(0)
+
+    bool success = true;
 
     read_u16(pClassInfo->minorVersion);
     read_u16(pClassInfo->majorVersion);
 
     read_u16(pClassInfo->constantPoolCount);
-    pClassInfo->ppConstantPool = malloc(sizeof(*pClassInfo->ppConstantPool) * (pClassInfo->constantPoolCount - 1));
+    pClassInfo->ppConstantPool = ALLOC(sizeof(*pClassInfo->ppConstantPool) * (pClassInfo->constantPoolCount - 1));
     for (uint16_t i = 1; i < pClassInfo->constantPoolCount; ++i) {
-        pClassInfo->ppConstantPool[i - 1] = read_constant(pClassFile);
+        cp_info* pCpInfo = read_constant(pClassFile, pFilename);
+        pClassInfo->ppConstantPool[i - 1] = pCpInfo;
+        success &= (pCpInfo != NULL);
+    }
+
+    if (!success) {
+        fclose(pClassFile);
+        return false;
     }
 
     read_u16(pClassInfo->accessFlags);
@@ -36,30 +52,71 @@ bool read_class(class_info* pClassInfo, const char* pFilename) {
 
 
     read_u16(pClassInfo->interfacesCount);
-    pClassInfo->pInterfaces = malloc(sizeof(*pClassInfo->pInterfaces) * (pClassInfo->interfacesCount));
+    pClassInfo->pInterfaces = ALLOC(sizeof(*pClassInfo->pInterfaces) * (pClassInfo->interfacesCount));
     for (uint16_t i = 0; i < pClassInfo->interfacesCount; ++i) {
         read_u16(pClassInfo->pInterfaces[i]);
     } 
     
     read_u16(pClassInfo->fieldsCount);
-    pClassInfo->pFields = malloc(sizeof(*pClassInfo->pFields) * (pClassInfo->fieldsCount));
+    pClassInfo->pFields = ALLOC(sizeof(*pClassInfo->pFields) * (pClassInfo->fieldsCount));
     for (uint16_t i = 0; i < pClassInfo->fieldsCount; ++i) {
-        read_field(pClassInfo->pFields + i, pClassInfo->ppConstantPool, pClassFile);
+        success &= read_field(pClassInfo->pFields + i, pClassInfo->ppConstantPool, pClassFile, pFilename);
     } 
+
+    if (!success) {
+        fclose(pClassFile);
+        return false;
+    }
 
     read_u16(pClassInfo->methodsCount);
-    pClassInfo->pMethods = malloc(sizeof(*pClassInfo->pMethods) * (pClassInfo->methodsCount));
+    pClassInfo->pMethods = ALLOC(sizeof(*pClassInfo->pMethods) * (pClassInfo->methodsCount));
     for (uint16_t i = 0; i < pClassInfo->methodsCount; ++i) {
-        read_method(pClassInfo->pMethods + i, pClassInfo->ppConstantPool, pClassFile);
+        success &= read_method(pClassInfo->pMethods + i, pClassInfo->ppConstantPool, pClassFile, pFilename);
     } 
 
+    if (!success) {
+        fclose(pClassFile);
+        return false;
+    }
+
     read_u16(pClassInfo->attributesCount);
-    pClassInfo->attributes = malloc(sizeof(attr_info**) * pClassInfo->attributesCount);
+    pClassInfo->attributes = ALLOC(sizeof(attr_info**) * pClassInfo->attributesCount);
     for (uint16_t i = 0; i < pClassInfo->attributesCount; ++i) {
-        pClassInfo->attributes[i] = read_attr(pClassInfo->ppConstantPool, pClassFile);
+        attr_info* pAttr = read_attr(pClassInfo->ppConstantPool, pClassFile, pFilename);
+        pClassInfo->attributes[i] = pAttr;
+        success &= (pAttr != NULL);
     }
 
     fclose(pClassFile);
+    return success;
+}
+
+void deinit_class(class_info* pClassInfo) {
+    if (pClassInfo->attributes != NULL) {
+        for (uint16_t i = 0; i < pClassInfo->attributesCount; ++i) {
+            free_attr(pClassInfo->attributes[i]);
+        }
+        FREE(pClassInfo->attributes);
+    }
+    if (pClassInfo->pMethods != NULL) {
+        for (uint16_t i = 0; i < pClassInfo->methodsCount; ++i) {
+            deinit_method(pClassInfo->pMethods + i);
+        }
+        FREE(pClassInfo->pMethods);
+    }
+    if (pClassInfo->pFields != NULL) {
+        for (uint16_t i = 0; i < pClassInfo->fieldsCount; ++i) {
+            deinit_field(pClassInfo->pFields + i);
+        }
+        FREE(pClassInfo->pFields);
+    }
+    FREE(pClassInfo->pInterfaces);
+    if (pClassInfo->ppConstantPool != NULL) {
+        for (uint16_t i = 0; i < pClassInfo->constantPoolCount; ++i) {
+            FREE(pClassInfo->ppConstantPool[i]);
+        }
+        FREE(pClassInfo->ppConstantPool);
+    }
 }
 
 void fprint_class(class_info* pClassInfo, FILE* pStream) {
@@ -75,11 +132,10 @@ void fprint_class(class_info* pClassInfo, FILE* pStream) {
     fprintf(pStream, "\n");
 
     fprintf(pStream, PD"Access flags"PD);
-    fprint_access(pStream, pClassInfo->accessFlags, "", PUBLIC, PD);
-    fprint_access(pStream, pClassInfo->accessFlags, "", FINAL, PD);
-    fprint_access(pStream, pClassInfo->accessFlags, "", SUPER, PD);
-    fprint_access(pStream, pClassInfo->accessFlags, "", INTERFACE, PD);
-    fprint_access(pStream, pClassInfo->accessFlags, "", ABSTRACT, PD);
+#define ACC_PRINT_VAR pClassInfo->accessFlags
+#define ACC_PRINT_OUTPUT_STREAM pStream
+#define ACC_PRINT_PADDING PD
+    fprint_acesses_or_none(PUBLIC, FINAL, SUPER, INTERFACE, ABSTRACT);
     fprintf(pStream, "\n");
 
     fprintf(pStream, PD"Interfaces  "PD);

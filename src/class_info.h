@@ -1,6 +1,7 @@
 #ifndef header_h
 #define header_h
 
+#include "access_flags.h"
 #include "cp_info.h"
 #include "field_info.h"
 #include "method_info.h"
@@ -27,6 +28,8 @@ typedef struct class_info {
 } class_info;
 
 bool read_class(class_info* pClassInfo, const char* pFilename);
+
+void deinit_class(class_info* pClassInfo);
 
 void fprint_class(class_info* pClassInfo, FILE* pStream);
 

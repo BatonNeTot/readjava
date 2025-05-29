@@ -51,8 +51,8 @@ void parse_args(args_info* pArgs, int argc, char** argv, FILE* pStream) {
                     fprint_help_and_exit(pStream);
                 }
                 default:
-                    fprintf(stderr, "Unknown flag -- '%c'.\n", argv[i][j]);
-                    fprint_help_and_exit(pStream);
+                    fprintf(stderr, "readjava: unknown flag -- '%c'\n", argv[i][j]);
+                    fprint_help_and_exit(stderr);
             }
         }
     }
@@ -62,7 +62,7 @@ void parse_args(args_info* pArgs, int argc, char** argv, FILE* pStream) {
         fprint_help_and_exit(pStream);
     }
 
-    pArgs->ppFilenames = malloc(sizeof(const char*) * pArgs->filenamesCount);
+    pArgs->ppFilenames = ALLOC(sizeof(const char*) * pArgs->filenamesCount);
 
     uint32_t filenamesCounter = 0;
     for (int i = 1; i < argc; ++i) {

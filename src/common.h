@@ -7,6 +7,22 @@
 #include <string.h>
 #include <stdlib.h>
 
+// https://stackoverflow.com/questions/1872220/is-it-possible-to-iterate-over-arguments-in-variadic-macros/11994395#11994395
+#define FE_0(WHAT, OP)
+#define FE_1(WHAT, OP, X) WHAT(X) 
+#define FE_2(WHAT, OP, X, ...) WHAT(X) OP FE_1(WHAT, OP, __VA_ARGS__)
+#define FE_3(WHAT, OP, X, ...) WHAT(X) OP FE_2(WHAT, OP, __VA_ARGS__)
+#define FE_4(WHAT, OP, X, ...) WHAT(X) OP FE_3(WHAT, OP, __VA_ARGS__)
+#define FE_5(WHAT, OP, X, ...) WHAT(X) OP FE_4(WHAT, OP, __VA_ARGS__)
+#define FE_6(WHAT, OP, X, ...) WHAT(X) OP FE_5(WHAT, OP, __VA_ARGS__)
+#define FE_7(WHAT, OP, X, ...) WHAT(X) OP FE_6(WHAT, OP, __VA_ARGS__)
+#define FE_8(WHAT, OP, X, ...) WHAT(X) OP FE_7(WHAT, OP, __VA_ARGS__)
+#define FE_9(WHAT, OP, X, ...) WHAT(X) OP FE_8(WHAT, OP, __VA_ARGS__)
+
+#define GET_MACRO(_0,_1,_2,_3,_4,_5,_6,_7,_8,_9,NAME,...) NAME 
+#define FOR_EACH(action,op,...) \
+  GET_MACRO(_0,__VA_ARGS__,FE_9,FE_8,FE_7,FE_6,FE_5,FE_4,FE_3,FE_2,FE_1,FE_0)(action,op,__VA_ARGS__)
+
 #define swapEndian8(value) (value)
 #ifdef _MSC_VER  
     #define swapEndian16(value) _byteswap_ushort(value)
@@ -18,7 +34,9 @@
     #define swapEndian64(value) __builtin_bswap64(value)
 #endif
 
+#ifndef IS_BIG_ENDIAN
 #define IS_BIG_ENDIAN 0
+#endif
 
 #if IS_BIG_ENDIAN
 #define beToCPU(value, size) (value)
@@ -27,13 +45,12 @@
 #endif
 
 
-
 #define read_block(buffer, size)\
 do {\
     size_t readCount = fread(buffer, 1, size, pClassFile);\
     if (readCount != size) {\
-        fprintf(stderr, "Unexpected EOF.\n");\
-        exit(-1);\
+        fprintf(stderr, "readjava: Error: '%s':unexpected EOF\n", pFilename);\
+        EOF_ACTION();\
     }\
 } while(0)
 
@@ -50,28 +67,8 @@ do {\
 #define read_u64(var) read_swap_endian(var, 64)
 
 
-typedef uint16_t access_flags;
-
-enum __ACCESS_FLAGS {
-    ACC_PUBLIC          = 	0x0001,
-    ACC_PRIVATE         = 	0x0002,
-    ACC_PROTECTED       = 	0x0004,
-    ACC_STATIC          = 	0x0008,
-    ACC_FINAL           = 	0x0010,
-    ACC_SYNCHRONIZED    = 	0x0020,
-    ACC_SUPER           = 	0x0020,
-    ACC_VOLATILE        = 	0x0040,
-    ACC_TRANSIENT       = 	0x0080,
-    ACC_NATIVE          = 	0x0100,
-    ACC_INTERFACE       = 	0x0200,
-    ACC_ABSTRACT        = 	0x0400,
-    ACC_STRICT          = 	0x0800,
-};
-
-#define fprint_access(file, accessFlags, formatPrefix, accessName, formatPostfix, ...)\
-if ((accessFlags) & ACC_##accessName) fprintf(file, formatPrefix #accessName formatPostfix)
-#define fprintf_access(file, accessFlags, formatPrefix, accessName, formatPostfix, ...)\
-if ((accessFlags) & ACC_##accessName) fprintf(file, formatPrefix #accessName formatPostfix, __VA_ARGS__)
+#define ALLOC(size) (malloc(size))
+#define FREE(ptr) (free(ptr))
 
 #define PADDING "  "
 #define PD PADDING

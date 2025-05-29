@@ -2,87 +2,98 @@
 
 #include "common.h"
 
-cp_tag* read_constant(FILE* pClassFile) {
+cp_info* read_constant(FILE* pClassFile, const char* pFilename) {
+
+#define FREE_AND_RETURN 
+
+#define EOF_ACTION() return NULL
     cp_tag tag;
     read_u8(tag);
-    
+
     switch(tag) {
-        case CP_CLASS: {
-            cp_class_info* pInfo = malloc(sizeof(cp_class_info));
-            pInfo->tag = tag;
-            read_u16(pInfo->nameIndex);
-            return (cp_tag*)pInfo;
-        }
-        case CP_FIELDREF: {
-            cp_fieldref_info* pInfo = malloc(sizeof(cp_fieldref_info));
-            pInfo->tag = tag;
-            read_u16(pInfo->classIndex);
-            read_u16(pInfo->nameAndTypeIndex);
-            return (cp_tag*)pInfo;
-        }
-        case CP_METHODREF: {
-            cp_methodref_info* pInfo = malloc(sizeof(cp_methodref_info));
-            pInfo->tag = tag;
-            read_u16(pInfo->classIndex);
-            read_u16(pInfo->nameAndTypeIndex);
-            return (cp_tag*)pInfo;
-        }
-        case CP_IMETHODREF: {
-            cp_imethodref_info* pInfo = malloc(sizeof(cp_imethodref_info));
-            pInfo->tag = tag;
-            read_u16(pInfo->classIndex);
-            read_u16(pInfo->nameAndTypeIndex);
-            return (cp_tag*)pInfo;
-        }
-        case CP_STRING: {
-            cp_string_info* pInfo = malloc(sizeof(cp_string_info));
-            pInfo->tag = tag;
-            read_u16(pInfo->stringIndex);
-            return (cp_tag*)pInfo;
-        }
-        case CP_INTEGER: {
-            cp_integer_info* pInfo = malloc(sizeof(cp_integer_info));
-            pInfo->tag = tag;
-            read_u32(pInfo->bytes);
-            return (cp_tag*)pInfo;
-        }
-        case CP_FLOAT: {
-            cp_float_info* pInfo = malloc(sizeof(cp_float_info));
-            pInfo->tag = tag;
-            read_u32(pInfo->bytes);
-            return (cp_tag*)pInfo;
-        }
-        case CP_LONG: {
-            cp_long_info* pInfo = malloc(sizeof(cp_long_info));
-            pInfo->tag = tag;
-            read_u64(pInfo->bytes);
-            return (cp_tag*)pInfo;
-        }
-        case CP_DOUBLE: {
-            cp_double_info* pInfo = malloc(sizeof(cp_double_info));
-            pInfo->tag = tag;
-            read_u64(pInfo->bytes);
-            return (cp_tag*)pInfo;
-        }
-        case CP_NAME_AND_TYPE: {
-            cp_name_and_type_info* pInfo = malloc(sizeof(cp_name_and_type_info));
-            pInfo->tag = tag;
-            read_u16(pInfo->nameIndex);
-            read_u16(pInfo->descriptorIndex);
-            return (cp_tag*)pInfo;
-        }
         case CP_UTF8: {
             uint16_t length;
             read_u16(length);
-            cp_utf8_info* pInfo = malloc(sizeof(cp_utf8_info) + sizeof(uint8_t) * length);
+
+#undef EOF_ACTION
+#define EOF_ACTION() \
+do {\
+    FREE(pInfo);\
+    return NULL;\
+} while(0)
+            cp_utf8_info* pInfo = ALLOC(sizeof(cp_utf8_info) + sizeof(uint8_t) * length);
             pInfo->tag = tag;
             pInfo->length = length;
             read_block(pInfo->bytes, length);
-            return (cp_tag*)pInfo;
+            return (cp_info*)pInfo;
+        }
+        case CP_CLASS: {
+            cp_class_info* pInfo = ALLOC(sizeof(cp_class_info));
+            pInfo->tag = tag;
+            read_u16(pInfo->nameIndex);
+            return (cp_info*)pInfo;
+        }
+        case CP_FIELDREF: {
+            cp_fieldref_info* pInfo = ALLOC(sizeof(cp_fieldref_info));
+            pInfo->tag = tag;
+            read_u16(pInfo->classIndex);
+            read_u16(pInfo->nameAndTypeIndex);
+            return (cp_info*)pInfo;
+        }
+        case CP_METHODREF: {
+            cp_methodref_info* pInfo = ALLOC(sizeof(cp_methodref_info));
+            pInfo->tag = tag;
+            read_u16(pInfo->classIndex);
+            read_u16(pInfo->nameAndTypeIndex);
+            return (cp_info*)pInfo;
+        }
+        case CP_IMETHODREF: {
+            cp_imethodref_info* pInfo = ALLOC(sizeof(cp_imethodref_info));
+            pInfo->tag = tag;
+            read_u16(pInfo->classIndex);
+            read_u16(pInfo->nameAndTypeIndex);
+            return (cp_info*)pInfo;
+        }
+        case CP_STRING: {
+            cp_string_info* pInfo = ALLOC(sizeof(cp_string_info));
+            pInfo->tag = tag;
+            read_u16(pInfo->stringIndex);
+            return (cp_info*)pInfo;
+        }
+        case CP_INTEGER: {
+            cp_integer_info* pInfo = ALLOC(sizeof(cp_integer_info));
+            pInfo->tag = tag;
+            read_u32(pInfo->bytes);
+            return (cp_info*)pInfo;
+        }
+        case CP_FLOAT: {
+            cp_float_info* pInfo = ALLOC(sizeof(cp_float_info));
+            pInfo->tag = tag;
+            read_u32(pInfo->bytes);
+            return (cp_info*)pInfo;
+        }
+        case CP_LONG: {
+            cp_long_info* pInfo = ALLOC(sizeof(cp_long_info));
+            pInfo->tag = tag;
+            read_u64(pInfo->bytes);
+            return (cp_info*)pInfo;
+        }
+        case CP_DOUBLE: {
+            cp_double_info* pInfo = ALLOC(sizeof(cp_double_info));
+            pInfo->tag = tag;
+            read_u64(pInfo->bytes);
+            return (cp_info*)pInfo;
+        }
+        case CP_NAME_AND_TYPE: {
+            cp_name_and_type_info* pInfo = ALLOC(sizeof(cp_name_and_type_info));
+            pInfo->tag = tag;
+            read_u16(pInfo->nameIndex);
+            read_u16(pInfo->descriptorIndex);
+            return (cp_info*)pInfo;
         }
         default: 
-            fprintf(stderr, "Unknown constant tag %02X.\n", tag);
-            exit(-1);
+            fprintf(stderr, "readjava: Error: '%s': unknown constant tag %02X.\n", pFilename, tag);
+            return NULL;
     }
 }
 
