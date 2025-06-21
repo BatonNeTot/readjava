@@ -7,6 +7,8 @@ const uint8_t aJavaMagic[4] = { 0xCA, 0xFE, 0xBA, 0xBE };
 #define javaMagicLength (sizeof(aJavaMagic) / sizeof(*(aJavaMagic)))
 
 bool read_class(class_info* pClassInfo, const char* pFilename) {
+    *pClassInfo = (class_info){0};
+
     FILE* pClassFile = fopen(pFilename, "rb");
     if (pClassFile == NULL) {
         fprintf(stderr, "readjava: Error: '%s': No such file\n", pFilename);
@@ -52,16 +54,20 @@ do {\
 
 
     read_u16(pClassInfo->interfacesCount);
-    pClassInfo->pInterfaces = ALLOC(sizeof(*pClassInfo->pInterfaces) * (pClassInfo->interfacesCount));
-    for (uint16_t i = 0; i < pClassInfo->interfacesCount; ++i) {
-        read_u16(pClassInfo->pInterfaces[i]);
+    if (pClassInfo->interfacesCount > 0) {
+        pClassInfo->pInterfaces = ALLOC(sizeof(*pClassInfo->pInterfaces) * (pClassInfo->interfacesCount));
+        for (uint16_t i = 0; i < pClassInfo->interfacesCount; ++i) {
+            read_u16(pClassInfo->pInterfaces[i]);
+        }
     } 
     
     read_u16(pClassInfo->fieldsCount);
-    pClassInfo->pFields = ALLOC(sizeof(*pClassInfo->pFields) * (pClassInfo->fieldsCount));
-    for (uint16_t i = 0; i < pClassInfo->fieldsCount; ++i) {
-        success &= read_field(pClassInfo->pFields + i, pClassInfo->ppConstantPool, pClassFile, pFilename);
-    } 
+    if (pClassInfo->fieldsCount > 0) {
+        pClassInfo->pFields = ALLOC(sizeof(*pClassInfo->pFields) * (pClassInfo->fieldsCount));
+        for (uint16_t i = 0; i < pClassInfo->fieldsCount; ++i) {
+            success &= read_field(pClassInfo->pFields + i, pClassInfo->ppConstantPool, pClassFile, pFilename);
+        }
+    }
 
     if (!success) {
         fclose(pClassFile);
@@ -69,10 +75,12 @@ do {\
     }
 
     read_u16(pClassInfo->methodsCount);
-    pClassInfo->pMethods = ALLOC(sizeof(*pClassInfo->pMethods) * (pClassInfo->methodsCount));
-    for (uint16_t i = 0; i < pClassInfo->methodsCount; ++i) {
-        success &= read_method(pClassInfo->pMethods + i, pClassInfo->ppConstantPool, pClassFile, pFilename);
-    } 
+    if (pClassInfo->methodsCount > 0) {
+        pClassInfo->pMethods = ALLOC(sizeof(*pClassInfo->pMethods) * (pClassInfo->methodsCount));
+        for (uint16_t i = 0; i < pClassInfo->methodsCount; ++i) {
+            success &= read_method(pClassInfo->pMethods + i, pClassInfo->ppConstantPool, pClassFile, pFilename);
+        }
+    }
 
     if (!success) {
         fclose(pClassFile);
@@ -80,11 +88,13 @@ do {\
     }
 
     read_u16(pClassInfo->attributesCount);
-    pClassInfo->attributes = ALLOC(sizeof(attr_info**) * pClassInfo->attributesCount);
-    for (uint16_t i = 0; i < pClassInfo->attributesCount; ++i) {
-        attr_info* pAttr = read_attr(pClassInfo->ppConstantPool, pClassFile, pFilename);
-        pClassInfo->attributes[i] = pAttr;
-        success &= (pAttr != NULL);
+    if (pClassInfo->attributesCount > 0) {
+        pClassInfo->attributes = ALLOC(sizeof(attr_info**) * pClassInfo->attributesCount);
+        for (uint16_t i = 0; i < pClassInfo->attributesCount; ++i) {
+            attr_info* pAttr = read_attr(pClassInfo->ppConstantPool, pClassFile, pFilename);
+            pClassInfo->attributes[i] = pAttr;
+            success &= (pAttr != NULL);
+        }
     }
 
     fclose(pClassFile);
@@ -120,67 +130,100 @@ void deinit_class(class_info* pClassInfo) {
 }
 
 void fprint_class(class_info* pClassInfo, FILE* pStream) {
-    fprintf(pStream, "Class info:\n");
-    fprintf(pStream, PD"Version     "PD"%"PRIu16".%"PRIu16"\n", pClassInfo->majorVersion, pClassInfo->minorVersion);
+    fprintf(pStream, "class info:\n");
+    fprintf(pStream, PD"version             "PD"%"PRIu16".%"PRIu16"\n", pClassInfo->majorVersion, pClassInfo->minorVersion);
     
-    fprintf(pStream, PD"Class       "PD);
-    fprint_constant_short(pClassInfo->thisClassIndex, pClassInfo->ppConstantPool, pStream);
+    fprintf(pStream, PD"class               "PD);
+    fprint_constant_verbose(pClassInfo->thisClassIndex, pClassInfo->ppConstantPool, pStream);
     fprintf(pStream, "\n");
 
-    fprintf(pStream, PD"Super       "PD);
-    fprint_constant_short(pClassInfo->superClassIndex, pClassInfo->ppConstantPool, pStream);
+    fprintf(pStream, PD"super               "PD);
+    fprint_constant_verbose(pClassInfo->superClassIndex, pClassInfo->ppConstantPool, pStream);
     fprintf(pStream, "\n");
 
-    fprintf(pStream, PD"Access flags"PD);
-#define ACC_PRINT_VAR pClassInfo->accessFlags
-#define ACC_PRINT_OUTPUT_STREAM pStream
-#define ACC_PRINT_PADDING PD
-    fprint_acesses_or_none(PUBLIC, FINAL, SUPER, INTERFACE, ABSTRACT);
+    fprintf(pStream, PD"access flags        "PD);
+    fprint_acesses(pClassInfo->accessFlags, pStream, ACC_PUBLIC, ACC_FINAL, ACC_SUPER, ACC_INTERFACE, ACC_ABSTRACT);
     fprintf(pStream, "\n");
 
-    fprintf(pStream, PD"Interfaces  "PD);
+    fprintf(pStream, PD"interfaces");
     if (pClassInfo->interfacesCount == 0) {
-        fprintf(pStream, "---");
-    } else
-    for (uint16_t i = 0; i < pClassInfo->interfacesCount; ++i) {
-        fprint_constant_short(pClassInfo->pInterfaces[i], pClassInfo->ppConstantPool, pStream);
-        fprintf(pStream, PD);
+        fprintf(pStream, "          "PD"none\n");
+    } else {
+        fprintf(pStream, ":\n");
+        for (uint16_t i = 0; i < pClassInfo->interfacesCount; ++i) {
+            fprintf(pStream, PD PD"                  "PD);
+            fprint_constant_verbose(pClassInfo->pInterfaces[i], pClassInfo->ppConstantPool, pStream);
+            fprintf(pStream, "\n");
+        }
     }
-    fprintf(pStream, "\n");
 
-    fprintf(pStream, PD"Fields      "PD"%"PRIu16"\n", pClassInfo->fieldsCount);
-    fprintf(pStream, PD"Methods     "PD"%"PRIu16"\n", pClassInfo->methodsCount);
+    fprintf(pStream, PD"fields        "PD"%"PRIu16"\n", pClassInfo->fieldsCount);
+    fprintf(pStream, PD"methods       "PD"%"PRIu16"\n", pClassInfo->methodsCount);
 
+    attr_inner_classes* pInnerClasses = NULL;
     attr_source_file* pSourceFile = NULL;
-    uint16_t unsupported = 0;
+    uint16_t nonstandard = 0;
 
     for (uint16_t i = 0; i < pClassInfo->attributesCount; ++i) {
         attr_info* pAttr = pClassInfo->attributes[i];
         switch (pAttr->tag) {
+            case ATTR_INNER_CLASSES:
+                if (pInnerClasses == NULL) {
+                    pInnerClasses = (attr_inner_classes*) pAttr;
+                }
+                break;
             case ATTR_SOURCE_FILE:
                 if (pSourceFile == NULL) {
                     pSourceFile = (attr_source_file*) pAttr;
                 }
                 break;
+            case ATTR_SYNTHETIC:
+                fprintf(pStream, PD"Synthetic\n");
+                break;
+            case ATTR_DEPRECATED:
+                fprintf(pStream, PD"Deprecated\n");
+                break;
             default:
-                unsupported |= pAttr->tag;
+                nonstandard |= pAttr->tag;
+        }
+    }
+
+    if (pInnerClasses != NULL) {
+        fprintf(pStream, PD"inner classes:\n");
+
+        for (uint16_t i = 0; i < pInnerClasses->numberOfClasses; ++i) {
+            attr_inner_classes_info* pInfo = pInnerClasses->classes + i;
+
+            fprintf(pStream, PD PD "inner class "PD);
+            fprint_constant_verbose(pInfo->innerClassInfoIndex, pClassInfo->ppConstantPool, pStream);
+            fprintf(pStream, "\n");
+
+            fprintf(pStream, PD PD "outer class "PD);
+            fprint_constant_verbose(pInfo->outerClassInfoIndex, pClassInfo->ppConstantPool, pStream);
+            fprintf(pStream, "\n");
+
+            fprintf(pStream, PD PD "name        "PD);
+            fprint_constant_verbose(pInfo->innerNameIndex, pClassInfo->ppConstantPool, pStream);
+            fprintf(pStream, "\n");
+            
+            fprintf(pStream, PD PD "access flags"PD);
+            fprint_acesses(pInfo->innerClassAccessFlags, pStream, ACC_PUBLIC, ACC_PRIVATE, ACC_PROTECTED, ACC_STATIC, ACC_FINAL, ACC_INTERFACE, ACC_ABSTRACT);
+            fprintf(pStream, "\n");
         }
     }
 
     if (pSourceFile != NULL) {
-        fprintf(pStream, PD"Source file "PD);
-        fprint_constant_short(pSourceFile->sourceFileIndex, pClassInfo->ppConstantPool, pStream);
+        fprintf(pStream, PD"SourceFile          "PD);
+        fprint_constant_verbose(pSourceFile->sourceFileIndex, pClassInfo->ppConstantPool, pStream);
         fprintf(pStream, "\n");
-    } else {
-        fprintf(pStream, PD"No source file\n");
     }
 
-    if (unsupported != 0) {
-        fprintf(pStream, PD"Unsupported attributes\n");
+    if (nonstandard != 0) {
+        fprintf(pStream, PD"non-standard attributes:\n");
 
         for (uint16_t i = 0; i < pClassInfo->attributesCount; ++i) {
             attr_info* pAttr = pClassInfo->attributes[i];
-            if ((pAttr->tag & unsupported) == 0) {
+            if ((pAttr->tag & nonstandard) == 0) {
                 continue;
             }
 

@@ -20,6 +20,7 @@ set_target_properties(${PROJECT_TARGET}
 )
 
 target_compile_definitions(${PROJECT_TARGET} PRIVATE _AMD64_)
+target_compile_definitions(${PROJECT_TARGET} PRIVATE READJAVA_VERSION="0.1.0")
 
 if(MSVC)
     target_compile_definitions(${PROJECT_TARGET} PRIVATE _CRT_SECURE_NO_WARNINGS)

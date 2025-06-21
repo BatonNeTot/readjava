@@ -21,16 +21,23 @@ enum __ACCESS_FLAGS {
     ACC_STRICT          = 	0x0800,
 };
 
-#define __ACC_PREFIX(name) ACC_##name
-#define __ACC_PRINT(name) if ((ACC_PRINT_VAR) & ACC_##name) fprintf(ACC_PRINT_OUTPUT_STREAM, #name ACC_PRINT_PADDING);
-
-#define fprint_acesses_or_none(...)\
+#define fprint_acesses(var, pStream, ...)\
 do {\
-    access_flags supported = FOR_EACH(__ACC_PREFIX, |, __VA_ARGS__);\
-    if (((ACC_PRINT_VAR) & supported) == 0) {\
-        fprintf(pStream, "---");\
+    fprintf(pStream, "(0x%04"PRIx16")"PD, (var));\
+    access_flags supported = FOR_EACH(DUMMY, |, __VA_ARGS__);\
+    access_flags flags[] = { __VA_ARGS__ };\
+    const char* flagsNames[] = { FOR_EACH_COMMA(STR, __VA_ARGS__) };\
+    bool printPadding = false;\
+    for (int i = 0; i < sizeof(flags) / sizeof(*flags); ++i) {\
+        if ((var) & flags[i]) { \
+            if (printPadding) {\
+                fprintf(pStream, ","PD);\
+            }\
+            printPadding = true;\
+            \
+            fprintf(pStream, flagsNames[i]);\
+        }\
     }\
-    FOR_EACH(__ACC_PRINT,,__VA_ARGS__)\
 } while(0)
 
 #endif

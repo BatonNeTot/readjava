@@ -90,14 +90,16 @@ typedef struct cp_name_and_type_info {
 typedef struct cp_utf8_info {
     cp_tag tag;
     uint16_t length;
-    uint8_t bytes[0];
+    uint8_t bytes[0]; // size of 'length'
 } cp_utf8_info;
 
 cp_info* read_constant(FILE* pClassFile, const char* pFilename);
 
 #define get_constant(ppConstantPool, constantIndex) ((ppConstantPool)[(constantIndex) - 1]);
 
-void fprint_constant_short(uint16_t constantIndex, cp_info** ppConstantPool, FILE* pStream);
+void fprint_constant(uint16_t constantIndex, cp_info** ppConstantPool, FILE* pStream);
+
+void fprint_constant_verbose(uint16_t constantIndex, cp_info** ppConstantPool, FILE* pStream);
 
 void fprint_pool(uint16_t constantPoolCount, cp_info** ppConstantPool, FILE* pStream);
 

@@ -97,7 +97,7 @@ do {\
     }
 }
 
-void fprint_constant_short(uint16_t constantIndex, cp_info** ppConstantPool, FILE* pStream) {
+void fprint_constant(uint16_t constantIndex, cp_info** ppConstantPool, FILE* pStream) {
     if (constantIndex == 0) {
         // TODO special case
         return;
@@ -108,39 +108,71 @@ void fprint_constant_short(uint16_t constantIndex, cp_info** ppConstantPool, FIL
     case CP_CLASS: {
         cp_class_info* pCpInfo = (cp_class_info*)pBaseCpInfo;
 
-        fprint_constant_short(pCpInfo->nameIndex, ppConstantPool, pStream);
+        fprint_constant(pCpInfo->nameIndex, ppConstantPool, pStream);
         break;
     }
     case CP_FIELDREF: {
+        cp_fieldref_info* pCpInfo = (cp_fieldref_info*)pBaseCpInfo;
+
+        fprint_constant(pCpInfo->classIndex, ppConstantPool, pStream);
+        fprintf(pStream, ".");
+        fprint_constant(pCpInfo->nameAndTypeIndex, ppConstantPool, pStream);
         break;
     }
     case CP_METHODREF: {
+        cp_methodref_info* pCpInfo = (cp_methodref_info*)pBaseCpInfo;
+
+        fprint_constant(pCpInfo->classIndex, ppConstantPool, pStream);
+        fprintf(pStream, ".");
+        fprint_constant(pCpInfo->nameAndTypeIndex, ppConstantPool, pStream);
         break;
     }
     case CP_IMETHODREF: {
+        cp_imethodref_info* pCpInfo = (cp_imethodref_info*)pBaseCpInfo;
+
+        fprint_constant(pCpInfo->classIndex, ppConstantPool, pStream);
+        fprintf(pStream, ".");
+        fprint_constant(pCpInfo->nameAndTypeIndex, ppConstantPool, pStream);
         break;
     }
     case CP_STRING: {
         cp_string_info* pCpInfo = (cp_string_info*)pBaseCpInfo;
 
         fprintf(pStream, "\"");
-        fprint_constant_short(pCpInfo->stringIndex, ppConstantPool, pStream);
+        fprint_constant(pCpInfo->stringIndex, ppConstantPool, pStream);
         fprintf(pStream, "\"");
         break;
     }
     case CP_INTEGER: {
+        cp_integer_info* pCpInfo = (cp_integer_info*)pBaseCpInfo;
+
+        fprintf(pStream, "%"PRId32, pCpInfo->value);
         break;
     }
     case CP_FLOAT: {
+        cp_float_info* pCpInfo = (cp_float_info*)pBaseCpInfo;
+
+        fprintf(pStream, "%f", pCpInfo->value);
         break;
     }
     case CP_LONG: {
+        cp_long_info* pCpInfo = (cp_long_info*)pBaseCpInfo;
+
+        fprintf(pStream, "%"PRId64, pCpInfo->value);
         break;
     }
     case CP_DOUBLE: {
+        cp_double_info* pCpInfo = (cp_double_info*)pBaseCpInfo;
+
+        fprintf(pStream, "%f", pCpInfo->value);
         break;
     }
     case CP_NAME_AND_TYPE: {
+        cp_name_and_type_info* pCpInfo = (cp_name_and_type_info*)pBaseCpInfo;
+
+        fprint_constant(pCpInfo->nameIndex, ppConstantPool, pStream);
+        fprintf(pStream, ":");
+        fprint_constant(pCpInfo->descriptorIndex, ppConstantPool, pStream);
         break;
     }
     case CP_UTF8: {
@@ -152,124 +184,153 @@ void fprint_constant_short(uint16_t constantIndex, cp_info** ppConstantPool, FIL
     }
 }
 
-static void fprint_constant(uint16_t constantIndex, cp_info** ppConstantPool, FILE* pStream) {
+void fprint_constant_verbose(uint16_t constantIndex, cp_info** ppConstantPool, FILE* pStream) {
     if (constantIndex == 0) {
         // TODO special case
         return;
     }
 
+#define U16_MAX_NUMERALS_WIDTH 5 // 65535
+#define DOUBLE_INDEX_WIDTH (1 + U16_MAX_NUMERALS_WIDTH + 1 + 1 + U16_MAX_NUMERALS_WIDTH) // #65525.#65535
+
     cp_info* pBaseCpInfo = get_constant(ppConstantPool, constantIndex);
     switch (*pBaseCpInfo) {
     case CP_CLASS: {
         cp_class_info* pCpInfo = (cp_class_info*)pBaseCpInfo;
-
-        fprintf(pStream, PD"Class:\n");
-        fprintf(pStream, PD PD"Name      "PD);
-        fprint_constant_short(pCpInfo->nameIndex, ppConstantPool, pStream);
-        fprintf(pStream, "\n");
+        int printedCount = fprintf(pStream, "#%"PRIu16, pCpInfo->nameIndex);
+        fprintf(pStream, "%*s"PD"//"PD, DOUBLE_INDEX_WIDTH - printedCount, "");
+        fprint_constant(pCpInfo->nameIndex, ppConstantPool, pStream);
         break;
     }
     case CP_FIELDREF: {
         cp_fieldref_info* pCpInfo = (cp_fieldref_info*)pBaseCpInfo;
-
-        fprintf(pStream, PD"Fieldref:\n");
-        fprintf(pStream, PD PD"Class     "PD);
-        fprint_constant_short(pCpInfo->classIndex, ppConstantPool, pStream);
-        cp_name_and_type_info* pCpNameAndType = (cp_name_and_type_info*)get_constant(ppConstantPool, pCpInfo->nameAndTypeIndex);
-        fprintf(pStream, "\n"PD PD"Name      "PD);
-        fprint_constant_short(pCpNameAndType->nameIndex, ppConstantPool, pStream);
-        fprintf(pStream, "\n"PD PD"Descriptor"PD);
-        fprint_constant_short(pCpNameAndType->descriptorIndex, ppConstantPool, pStream);
-        fprintf(pStream, "\n");
+        int printedCount = fprintf(pStream, "#%"PRIu16":%"PRIu16, pCpInfo->classIndex, pCpInfo->nameAndTypeIndex);
+        fprintf(pStream, "%*s"PD"//"PD, DOUBLE_INDEX_WIDTH - printedCount, "");
+        fprint_constant(constantIndex, ppConstantPool, pStream);
         break;
     }
     case CP_METHODREF: {
         cp_methodref_info* pCpInfo = (cp_methodref_info*)pBaseCpInfo;
-
-        fprintf(pStream, PD"Methodref:\n");
-        fprintf(pStream, PD PD"Class     "PD);
-        fprint_constant_short(pCpInfo->classIndex, ppConstantPool, pStream);
-        cp_name_and_type_info* pCpNameAndType = (cp_name_and_type_info*)get_constant(ppConstantPool, pCpInfo->nameAndTypeIndex);
-        fprintf(pStream, "\n"PD PD"Name      "PD);
-        fprint_constant_short(pCpNameAndType->nameIndex, ppConstantPool, pStream);
-        fprintf(pStream, "\n"PD PD"Descriptor"PD);
-        fprint_constant_short(pCpNameAndType->descriptorIndex, ppConstantPool, pStream);
-        fprintf(pStream, "\n");
+        int printedCount = fprintf(pStream, "#%"PRIu16":%"PRIu16, pCpInfo->classIndex, pCpInfo->nameAndTypeIndex);
+        fprintf(pStream, "%*s"PD"//"PD, DOUBLE_INDEX_WIDTH - printedCount, "");
+        fprint_constant(constantIndex, ppConstantPool, pStream);
         break;
     }
     case CP_IMETHODREF: {
         cp_imethodref_info* pCpInfo = (cp_imethodref_info*)pBaseCpInfo;
-
-        fprintf(pStream, PD"InterfaceMethodref:\n");
-        fprintf(pStream, PD PD"Class     "PD);
-        fprint_constant_short(pCpInfo->classIndex, ppConstantPool, pStream);
-        cp_name_and_type_info* pCpNameAndType = (cp_name_and_type_info*)get_constant(ppConstantPool, pCpInfo->nameAndTypeIndex);
-        fprintf(pStream, "\n"PD PD"Name      "PD);
-        fprint_constant_short(pCpNameAndType->nameIndex, ppConstantPool, pStream);
-        fprintf(pStream, "\n"PD PD"Descriptor"PD);
-        fprint_constant_short(pCpNameAndType->descriptorIndex, ppConstantPool, pStream);
-        fprintf(pStream, "\n");
+        int printedCount = fprintf(pStream, "#%"PRIu16":%"PRIu16, pCpInfo->classIndex, pCpInfo->nameAndTypeIndex);
+        fprintf(pStream, "%*s"PD"//"PD, DOUBLE_INDEX_WIDTH - printedCount, "");
+        fprint_constant(constantIndex, ppConstantPool, pStream);
         break;
     }
     case CP_STRING: {
         cp_string_info* pCpInfo = (cp_string_info*)pBaseCpInfo;
-
-        fprintf(pStream, PD"String:\n"PD PD);
-        fprint_constant_short(pCpInfo->stringIndex, ppConstantPool, pStream);
-        fprintf(pStream, "\n");
+        int printedCount = fprintf(pStream, "#%"PRIu16, pCpInfo->stringIndex);
+        fprintf(pStream, "%*s"PD"//"PD, DOUBLE_INDEX_WIDTH - printedCount, "");
+        fprint_constant(constantIndex, ppConstantPool, pStream);
         break;
     }
     case CP_INTEGER: {
         cp_integer_info* pCpInfo = (cp_integer_info*)pBaseCpInfo;
-
-        fprintf(pStream, PD"Integer:\n"PD PD"%"PRId32"\n", pCpInfo->value);
+        fprint_constant(constantIndex, ppConstantPool, pStream);
         break;
     }
     case CP_FLOAT: {
         cp_float_info* pCpInfo = (cp_float_info*)pBaseCpInfo;
-
-        fprintf(pStream, PD"Float:\n"PD PD"%f\n", pCpInfo->value);
+        fprint_constant(constantIndex, ppConstantPool, pStream);
         break;
     }
     case CP_LONG: {
         cp_long_info* pCpInfo = (cp_long_info*)pBaseCpInfo;
-
-        fprintf(pStream, PD"Long:\n"PD PD"%"PRId64"\n", pCpInfo->value);
+        fprint_constant(constantIndex, ppConstantPool, pStream);
         break;
     }
     case CP_DOUBLE: {
         cp_double_info* pCpInfo = (cp_double_info*)pBaseCpInfo;
-
-        fprintf(pStream, PD"Double:\n"PD PD"%f\n", pCpInfo->value);
+        fprint_constant(constantIndex, ppConstantPool, pStream);
         break;
     }
     case CP_NAME_AND_TYPE: {
         cp_name_and_type_info* pCpInfo = (cp_name_and_type_info*)pBaseCpInfo;
-
-        fprintf(pStream, PD"NameAndType:\n");
-        fprintf(pStream, PD PD"Name      "PD);
-        fprint_constant_short(pCpInfo->nameIndex, ppConstantPool, pStream);
-        fprintf(pStream, "\n"PD PD"Descriptor"PD);
-        fprint_constant_short(pCpInfo->descriptorIndex, ppConstantPool, pStream);
-        fprintf(pStream, "\n");
+        int printedCount = fprintf(pStream, "#%"PRIu16":%"PRIu16, pCpInfo->nameIndex, pCpInfo->descriptorIndex);
+        fprintf(pStream, "%*s"PD"//"PD, DOUBLE_INDEX_WIDTH - printedCount, "");
+        fprint_constant(constantIndex, ppConstantPool, pStream);
         break;
     }
     case CP_UTF8: {
         cp_utf8_info* pCpInfo = (cp_utf8_info*)pBaseCpInfo;
-
-        fprintf(pStream, PD"Utf8:\n"PD PD);
-        fprintf(pStream, "%.*s", pCpInfo->length, pCpInfo->bytes);
-        fprintf(pStream, "\n");
+        fprint_constant(constantIndex, ppConstantPool, pStream);
         break;
     }
     }
+}
+
+static uint8_t countNumerals(uint16_t value) {
+    uint8_t counter = 1;
+    while (value /= 10) {
+        ++counter;
+    }
+    return counter;
 }
 
 
 void fprint_pool(uint16_t constantPoolCount, cp_info** ppConstantPool, FILE* pStream) {
     fprintf(pStream, "Constant pool:\n");
 
-    for (uint16_t i = 1; i < constantPoolCount - 1; ++i) {
-        fprint_constant(i, ppConstantPool, pStream);
+    uint8_t labelsMaxWidth = countNumerals(constantPoolCount);
+    for (uint16_t i = 1; i < constantPoolCount; ++i) {
+        fprintf(pStream, PD"%*s#", labelsMaxWidth - countNumerals(i), "");
+        fprintf(pStream, "%"PRIu16 PD, i);
+
+        cp_info* pBaseCpInfo = get_constant(ppConstantPool, i);
+        switch (*pBaseCpInfo) {
+        case CP_CLASS: {
+            fprintf(pStream, "Class:             "PD);
+            break;
+        }
+        case CP_FIELDREF: {
+            fprintf(pStream, "Fieldref:          "PD);
+            break;
+        }
+        case CP_METHODREF: {
+            fprintf(pStream, "Methodref:         "PD);
+            break;
+        }
+        case CP_IMETHODREF: {
+            fprintf(pStream, "InterfaceMethodref:"PD);
+            break;
+        }
+        case CP_STRING: {
+            fprintf(pStream, "String:            "PD);
+            break;
+        }
+        case CP_INTEGER: {
+            fprintf(pStream, "Integer:           "PD);
+            break;
+        }
+        case CP_FLOAT: {
+            fprintf(pStream, "Float:             "PD);
+            break;
+        }
+        case CP_LONG: {
+            fprintf(pStream, "Long:              "PD);
+            break;
+        }
+        case CP_DOUBLE: {
+            fprintf(pStream, "Double:            "PD);
+            break;
+        }
+        case CP_NAME_AND_TYPE: {
+            fprintf(pStream, "NameAndType:       "PD);
+            break;
+        }
+        case CP_UTF8: {
+            fprintf(pStream, "Utf8:              "PD);
+            break;
+        }
+        }
+
+        fprint_constant_verbose(i, ppConstantPool, pStream);
+        fprintf(pStream, "\n");
     } 
 }
